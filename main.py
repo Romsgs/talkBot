@@ -1,30 +1,35 @@
+import uuid
 import speech_recognition as sr
 from gtts import gTTS
+# from playsound import playsound
 import openai
 import os
-import simpleaudio as sa
-from pydub import AudioSegment
-from pydub.playback import play
+import pygame.mixer
+import subprocess
+pygame.mixer.init()
 # OpenAI API key
-openai_api_key = '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'
+openai_api_key = 
+# Suppress ALSA warnings globally
+subprocess.run(['/home/c0y073/miniconda3/bin/python', '/home/c0y073/dev/talkBot/getResponse.py'], stderr=subprocess.DEVNULL)
 
 # Initialize the OpenAI API client
 openai.api_key = openai_api_key
 
-# generate response function
+# Function to generate response from ChatGPT
 def get_response(speech):
     # Define a system message for ChatGPT
-    system_message = "You must act like a alexa assistent"
+    system_message = "voce ẽ um assistente virtual em portugues brasileiro"
     
     # Use ChatGPT to generate a greeting message
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": system_message},
-            {"role": "user", "content": f"answer this {speech}, no more than 500 characters."},
+            {"role": "user", "content": f"responda a este texto: {speech}, use respostas mais curtas para economizar os tokens."},
         ],
     )
     return response['choices'][0]['message']['content'].strip('"')
+
 # Function to convert speech to text
 def listen_to_voice():
     recognizer = sr.Recognizer()
@@ -40,24 +45,38 @@ def listen_to_voice():
     except sr.RequestError as e:
         return "nada"
 
-# Function to convert text to speech and play it using simpleaudio
-def text_to_voice(text):
-    tts = gTTS(text, lang="pt-BR")
-    tts.save("response.mp3")
-    audio = AudioSegment.from_mp3("response.mp3")
-    play(audio)
+# Function to convert text to speech and play it
+def speak(text):
+    tts = gTTS(text=text, lang='pt-BR')
+    filename = f'voice_{uuid.uuid4().hex}.mp3'
+    tts.save(filename)
+    pygame.mixer.music.load(filename)
+    pygame.mixer.music.play()
+    # playsound(filename)
+    
 
+# Function to play a greeting message
+def play_greet():
+    filename = 'greet.mp3'
+    pygame.mixer.music.load(filename)
+    pygame.mixer.music.play()
+    # playsound(filename)
 
-if __name__ == "__main__":
+# Function to handle user interaction
+def main():
     while True:
         text_heard = listen_to_voice()
         print(f"User: {text_heard}")
+
         if text_heard.lower() == "nada":
             continue
-        else:
-          response = get_response(text_heard)
-          print(f"Response: {response}")
-          text_to_voice(response)
 
-        # Add an exit condition, for example, by saying "exit" to stop the loop
-        
+        elif text_heard == 'Oi bote':
+            play_greet()
+            text_heard = listen_to_voice()
+            response = get_response(text_heard)
+            print(f"Response: {response}")
+            speak(response)
+
+if __name__ == "__main__":
+    main()
